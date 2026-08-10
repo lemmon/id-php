@@ -1,0 +1,16 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Composer
+/vendor/
+
+# IDE / Editors
+/.idea/
+/.vscode/
+/.cursor/
+/.claude/
+
+# Tooling caches
+/.phpunit.cache/
+.phpunit.result.cache

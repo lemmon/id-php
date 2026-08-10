@@ -1,0 +1,60 @@
+{
+    "name": "lemmon/id",
+    "description": "Random IDs optimized for visual transcription, with a curated alphabet, normalization, and a built-in check character.",
+    "license": "MIT",
+    "keywords": [
+        "id",
+        "identifier",
+        "check-digit",
+        "luhn",
+        "human-readable"
+    ],
+    "authors": [
+        {
+            "name": "Jakub Pelák",
+            "email": "jpelak@gmail.com"
+        }
+    ],
+    "homepage": "https://github.com/lemmon/id-php",
+    "support": {
+        "issues": "https://github.com/lemmon/id-php/issues",
+        "source": "https://github.com/lemmon/id-php"
+    },
+    "require": {
+        "php": "^8.1"
+    },
+    "require-dev": {
+        "carthage-software/mago": "^1.42",
+        "ergebnis/composer-normalize": "^2.52",
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Lemmon\\Id\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Lemmon\\Id\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "ergebnis/composer-normalize": true
+        }
+    },
+    "scripts": {
+        "analyze": "mago analyze",
+        "analyze:src": "mago analyze src",
+        "check": [
+            "@format:check",
+            "@lint",
+            "@analyze:src",
+            "@test"
+        ],
+        "format": "mago fmt",
+        "format:check": "mago fmt --check",
+        "lint": "mago lint",
+        "test": "phpunit"
+    }
+}

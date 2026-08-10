@@ -1,0 +1,75 @@
+# lemmon/id
+
+> Random IDs optimized for visual transcription. Over audio, spell characters
+> with code words such as Peter/Noro/Zuzana or Papa/November/Zulu; the library
+> does not prevent bare letter names from being misheard. Zero runtime
+> dependencies, one static class, six public methods.
+
+## API
+
+```php
+use Lemmon\Id\Id;
+
+Id::generate(int $length = 10, array $blocklist = self::DEFAULT_BLOCKLIST): string
+Id::normalize(string $input): string
+Id::isValid(string $id, ?int $length = null): bool
+Id::chunk(string $id, int $chunkSize = 4, string $separator = '-'): string
+Id::addCheck(string $id): string
+Id::verifyCheck(string $id): bool
+```
+
+- `generate()` returns `$length - 1` random characters and one deterministic
+  check character. It retries at most 100 times against the complete candidate
+  and throws below length 2 or when the blocklist cannot be satisfied.
+- `normalize()` removes Unicode whitespace plus `.`, `_`, and `-`; applies
+  selected case-aware repairs (`g`,`q`→`9`; `v`→`y`; `G`→`c`; `V`→`y`;
+  `1`→`7`; `2`→`z`); and lowercases. On invalid UTF-8, separator removal is
+  skipped but ASCII corrections and lowercasing still run. It does not
+  validate length or checksum.
+- `isValid()` checks alphabet membership and optional exact length, not the
+  checksum.
+- `chunk()` groups Unicode grapheme clusters for display and throws below
+  chunk size 1. The default separator round-trips through `normalize()`.
+- `addCheck()` appends a check character to a non-empty, unchecked body made
+  only from alphabet characters.
+- `verifyCheck()` validates alphabet membership and the trailing check
+  character. It expects normalized input and does not enforce an expected
+  length.
+
+For a fixed ten-character format, validate user input with both checks:
+
+```php
+$id = Id::normalize($typed);
+$valid = Id::isValid($id, 10) && Id::verifyCheck($id);
+```
+
+## Alphabet and check
+
+Alphabet: `3479cdefhjkmnprtwxyz`.
+
+It was selected to reduce common glyph confusion in lowercase and uppercase;
+this is not a typeface-independent guarantee. Confusion groups may be removed
+entirely or represented by one survivor. Only excluded characters with a
+case-specific, unambiguous target are repaired.
+
+The trailing character is a Luhn mod 20 checksum. It detects every
+single-character substitution and every adjacent transposition except
+`3` ↔ `z`. A uniformly random string drawn from the alphabet passes with
+1-in-20 probability. It is not a security feature.
+
+## Blocklist and limits
+
+`a` is excluded to make several unwanted words structurally impossible. The
+default blocklist contains a short, selected set of unwanted English terms and
+initialisms still expressible by the alphabet. It is intentionally not
+exhaustive or multilingual. Callers can extend, replace, or disable it; the
+authoritative list is `Id::DEFAULT_BLOCKLIST`.
+
+The library does not handle persistence or collisions. Enforce a unique
+database constraint and retry on conflict. Do not use these IDs as secrets,
+tokens, or capability URLs.
+
+## Further reading
+
+- [README](README.md) — full usage and design documentation
+- [CHANGELOG](CHANGELOG.md)
