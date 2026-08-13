@@ -65,20 +65,41 @@ final class Id
      * ASCII case is ignored ('MERCH' and 'merch' both match), since generated
      * IDs are always lowercase. See DEFAULT_BLOCKLIST.
      *
+     * $maxConsecutive, off by default, retries within the same budget when
+     * the same character repeats more than that many times in a row
+     * anywhere in the candidate, including across the body/check-character
+     * boundary — a run of identical characters is exactly as easy to
+     * miscount when transcribing as it is anywhere else. For example, 2
+     * allows "kwwe" but rejects "kwwwe". Use with caution: this shrinks the
+     * pool of valid candidates (severely at low values, on a 20-character
+     * alphabet), pushes more IDs into retries, and makes it easier to
+     * exhaust the 100-attempt budget when combined with a restrictive
+     * $blocklist — it's on the caller to pick a sane value for their length,
+     * not a mistake-proofed default.
+     *
      * Returns lowercase as the canonical form (database, URLs); uppercase it
      * at the presentation layer where desired.
      *
      * @param list<string> $blocklist
      *
-     * @throws \InvalidArgumentException if $length is less than 2.
-     * @throws \RuntimeException if 100 candidates are rejected by $blocklist.
+     * @throws \InvalidArgumentException if $length is less than 2, or if
+     *     $maxConsecutive is less than 1.
+     * @throws \RuntimeException if 100 candidates are rejected by $blocklist
+     *     or $maxConsecutive.
      */
-    public static function generate(int $length = 10, array $blocklist = self::DEFAULT_BLOCKLIST): string
-    {
+    public static function generate(
+        int $length = 10,
+        array $blocklist = self::DEFAULT_BLOCKLIST,
+        ?int $maxConsecutive = null,
+    ): string {
         if ($length < 2) {
             throw new \InvalidArgumentException(
                 'ID length must be at least 2 to include a check character.',
             );
+        }
+
+        if ($maxConsecutive !== null && $maxConsecutive < 1) {
+            throw new \InvalidArgumentException('maxConsecutive must be at least 1.');
         }
 
         for ($attempt = 0; $attempt < 100; $attempt++) {
@@ -89,12 +110,20 @@ final class Id
 
             $id = self::addCheck($result);
 
-            if (!self::containsBlockedWord($id, $blocklist)) {
-                return $id;
+            if (self::containsBlockedWord($id, $blocklist)) {
+                continue;
             }
+
+            if ($maxConsecutive !== null && self::exceedsMaxConsecutive($id, $maxConsecutive)) {
+                continue;
+            }
+
+            return $id;
         }
 
-        throw new \RuntimeException('Could not generate an ID avoiding every blocked word after 100 attempts.');
+        throw new \RuntimeException(
+            'Could not generate an ID satisfying the blocklist and maxConsecutive constraints after 100 attempts.',
+        );
     }
 
     /**
@@ -249,6 +278,31 @@ final class Id
     {
         foreach ($blocklist as $word) {
             if ($word !== '' && str_contains($id, strtolower($word))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * True if the same character repeats more than $maxConsecutive times in
+     * a row anywhere in $id. Counts runs directly instead of building a
+     * regex with a $maxConsecutive-sized quantifier: PCRE caps repeat counts
+     * at 65,535 and errors above it, which a caller-supplied value could
+     * otherwise hit.
+     */
+    private static function exceedsMaxConsecutive(string $id, int $maxConsecutive): bool
+    {
+        if ($maxConsecutive >= strlen($id)) {
+            return false;
+        }
+
+        $run = 1;
+        for ($i = 1; $i < strlen($id); $i++) {
+            $run = $id[$i] === $id[$i - 1] ? $run + 1 : 1;
+
+            if ($run > $maxConsecutive) {
                 return true;
             }
         }

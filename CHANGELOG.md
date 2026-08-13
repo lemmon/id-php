@@ -9,6 +9,12 @@ once a stable release is cut.
 
 ## [Unreleased]
 
+### Added
+
+- `Id::generate()` gained an optional `$maxConsecutive` parameter, off by
+  default, to reject candidates where a character repeats more than that
+  many times in a row.
+
 ## [0.1.0] - 2026-08-10
 
 ### Added

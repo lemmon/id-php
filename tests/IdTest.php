@@ -140,6 +140,80 @@ final class IdTest extends TestCase
         Id::generate(10, str_split(self::alphabet()));
     }
 
+    public function testGenerateMaxConsecutiveDefaultsToUnlimited(): void
+    {
+        // No assertion on runs themselves (default is "no limit", so runs
+        // are simply not guarded against) — this only pins that omitting
+        // the argument doesn't throw or otherwise change generate()'s
+        // existing default behavior.
+        self::assertSame(10, strlen(Id::generate()));
+    }
+
+    public function testGenerateEnforcesMaxConsecutiveOfOne(): void
+    {
+        // maxConsecutive: 1 is the strictest possible setting — no two
+        // adjacent characters anywhere in the candidate, including across
+        // the body/check-character boundary, may match. Longer IDs and many
+        // samples make this a meaningful test of enforcement, not luck.
+        for ($i = 0; $i < 200; $i++) {
+            $id = Id::generate(20, Id::DEFAULT_BLOCKLIST, 1);
+            self::assertDoesNotMatchRegularExpression('/(.)\1/', $id, "'{$id}' contains an adjacent repeat.");
+        }
+    }
+
+    public function testGenerateEnforcesMaxConsecutiveOfTwo(): void
+    {
+        // A run of 3 or more identical characters must never appear, but
+        // (checked below) a run of exactly 2 remains allowed — proving the
+        // limit is enforced at the given value, not silently clamped to 1.
+        for ($i = 0; $i < 300; $i++) {
+            $id = Id::generate(20, Id::DEFAULT_BLOCKLIST, 2);
+            self::assertDoesNotMatchRegularExpression('/(.)\1{2,}/', $id, "'{$id}' contains a run longer than 2.");
+        }
+    }
+
+    public function testGenerateMaxConsecutiveOfTwoStillAllowsRunsOfTwo(): void
+    {
+        // Mirrors testGenerateEmptyBlocklistDisablesFiltering's approach:
+        // prove the constraint isn't stricter than requested by showing a
+        // run of exactly 2 (permitted at maxConsecutive: 2) does appear
+        // across enough samples.
+        $ids = array_map(static fn(int $i): string => Id::generate(20, Id::DEFAULT_BLOCKLIST, 2), range(1, 300));
+
+        self::assertNotEmpty(
+            array_filter($ids, static fn(string $id): bool => preg_match('/(.)\1/', $id) === 1),
+            'Expected at least one adjacent repeat across 300 IDs at maxConsecutive: 2.',
+        );
+    }
+
+    /**
+     * @dataProvider tooLowMaxConsecutiveProvider
+     */
+    public function testGenerateThrowsBelowMinimumMaxConsecutive(int $maxConsecutive): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        Id::generate(10, Id::DEFAULT_BLOCKLIST, $maxConsecutive);
+    }
+
+    public static function tooLowMaxConsecutiveProvider(): array
+    {
+        return [[0], [-1]];
+    }
+
+    public function testGenerateAcceptsMaxConsecutiveAboveThePcreRepeatCountLimit(): void
+    {
+        // Regression: an earlier implementation checked runs with a regex
+        // quantifier sized directly from $maxConsecutive (e.g. '/(.)\1{100000,}/').
+        // PCRE caps repeat counts at 65,535 and errors above it, so any
+        // $maxConsecutive that large — trivially larger than any realistic
+        // ID — used to break generation instead of being the harmless no-op
+        // it should be.
+        $id = Id::generate(10, Id::DEFAULT_BLOCKLIST, 100_000);
+
+        self::assertTrue(Id::verifyCheck($id));
+    }
+
     public function testDefaultBlocklistCoversNamedExamples(): void
     {
         $selectedTerms = [

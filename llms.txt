@@ -10,7 +10,7 @@
 ```php
 use Lemmon\Id\Id;
 
-Id::generate(int $length = 10, array $blocklist = self::DEFAULT_BLOCKLIST): string
+Id::generate(int $length = 10, array $blocklist = self::DEFAULT_BLOCKLIST, ?int $maxConsecutive = null): string
 Id::normalize(string $input): string
 Id::isValid(string $id, ?int $length = null): bool
 Id::chunk(string $id, int $chunkSize = 4, string $separator = '-'): string
@@ -20,7 +20,11 @@ Id::verifyCheck(string $id): bool
 
 - `generate()` returns `$length - 1` random characters and one deterministic
   check character. It retries at most 100 times against the complete candidate
-  and throws below length 2 or when the blocklist cannot be satisfied.
+  and throws below length 2, below `maxConsecutive` 1, or when the blocklist
+  or `maxConsecutive` cannot be satisfied. `maxConsecutive` is off by default;
+  set it to reject a candidate (including its check character) where the same
+  character repeats more than that many times in a row. Use with caution —
+  low values sharply shrink the valid candidate pool.
 - `normalize()` removes Unicode whitespace plus `.`, `_`, and `-`; applies
   selected case-aware repairs (`g`,`q`→`9`; `v`→`y`; `G`→`c`; `V`→`y`;
   `1`→`7`; `2`→`z`); and lowercases. On invalid UTF-8, separator removal is

@@ -206,6 +206,31 @@ The default blocklist is intentionally short, English-specific, and not a
 guarantee against offensive or recognizable strings. Extend or replace it for
 your users and languages.
 
+## Avoiding repeating characters
+
+A run of the same character is easy to miscount when reading or copying an
+ID — was that two `w`s or three? `generate()`'s optional `$maxConsecutive`
+guards against this, off by default:
+
+```php
+Id::generate();                        // no limit (default)
+Id::generate(10, Id::DEFAULT_BLOCKLIST, 2);   // "kwwe..." ok, "kwwwe..." retried
+Id::generate(10, Id::DEFAULT_BLOCKLIST, 1);   // no two adjacent characters may match
+```
+
+The check applies to the complete candidate, including the trailing check
+character, so a run that straddles the body/check-character boundary is
+caught too. Retries share the same 100-attempt budget as the blocklist, and
+`generate()` throws `\RuntimeException` if no candidate satisfies both within
+that budget.
+
+Use this with caution and common sense. On the 20-character alphabet, low
+values shrink the pool of valid candidates — `maxConsecutive: 1` is a strong
+constraint, and pairing a strict value with a restrictive `$blocklist` makes
+it easier to exhaust the retry budget, especially at short lengths. There's
+no built-in floor tying `$maxConsecutive` to `$length`; picking a workable
+combination is left to the caller.
+
 ## Scope
 
 - **Visual transcription first.** The alphabet reduces glyph confusion when
@@ -241,7 +266,7 @@ they are identifiers, not secrets.
 
 | Method | Description |
 | ------ | ----------- |
-| `generate(int $length = 10, array $blocklist = self::DEFAULT_BLOCKLIST): string` | Generates a lowercase ID with a trailing check character. Throws below length 2 or after 100 candidates rejected by the blocklist. |
+| `generate(int $length = 10, array $blocklist = self::DEFAULT_BLOCKLIST, ?int $maxConsecutive = null): string` | Generates a lowercase ID with a trailing check character. Throws below length 2, if `$maxConsecutive` is below 1, or after 100 candidates rejected by the blocklist or `$maxConsecutive`. |
 | `normalize(string $input): string` | Removes supported separators, applies selected case-aware repairs, and lowercases. It does not validate length or checksum. |
 | `isValid(string $id, ?int $length = null): bool` | Checks alphabet membership and, optionally, exact length. It does not verify the checksum. |
 | `chunk(string $id, int $chunkSize = 4, string $separator = '-'): string` | Groups grapheme clusters for display. Throws below chunk size 1. |
