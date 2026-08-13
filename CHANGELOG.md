@@ -9,6 +9,8 @@ once a stable release is cut.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-13
+
 ### Added
 
 - `Id::generate()` gained an optional `$maxConsecutive` parameter, off by
@@ -31,5 +33,6 @@ once a stable release is cut.
   and initialisms.
 - PHP `^8.1` support.
 
-[Unreleased]: https://github.com/lemmon/id-php/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/lemmon/id-php/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/lemmon/id-php/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/lemmon/id-php/releases/tag/v0.1.0
