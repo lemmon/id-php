@@ -28,7 +28,7 @@ use Lemmon\Id\Id;
 
 $id = Id::generate();                    // "kwe7wndx4t" — canonical, lowercase
 echo strtoupper($id);                    // "KWE7WNDX4T" — display form
-echo Id::chunk(strtoupper($id));          // "KWE7-WNDX-4T"
+echo Id::chunk(strtoupper($id));         // "KWE7-WNDX-4T"
 
 // Accepting a transcribed ID back:
 $input = Id::normalize('KWE1-WNDX-4T');   // user misread 7 as 1 → repaired
@@ -120,7 +120,11 @@ Id::normalize('  TNX-44 HD.TXK ');  // "tnx44hdtxk"
 ```
 
 It removes whitespace—including Unicode whitespace such as a non-breaking
-space—and `.`, `_`, and `-`. It then applies these corrections against the
+space—and `.`, `_`, and `-`. Unicode dashes (en dash, em dash, non-breaking
+hyphen, …) and the minus sign `−`, which rich-text editors often substitute
+for `-`, are removed too, as are invisible format characters such as a
+zero-width space or byte order mark picked up by copy and paste. It then
+applies these corrections against the
 case actually typed:
 
 | Typed | Corrected to | Visual rationale                                           |
@@ -174,6 +178,10 @@ The check detects:
 
 - every single-character substitution;
 - every adjacent transposition except `3` ↔ `z`.
+
+Like every Luhn-style check, it does **not** detect swapping two characters
+one position apart (`cdf` → `fdc`), and it misses a small share (about 4%)
+of doubled-pair substitutions such as `cc` → `dd`.
 
 For strings of the expected length drawn uniformly from the 20-character
 alphabet, 1 in 20 has a valid check character by chance. The checksum is an

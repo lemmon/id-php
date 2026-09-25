@@ -9,6 +9,21 @@ once a stable release is cut.
 
 ## [Unreleased]
 
+### Changed
+
+- `Id::normalize()` also removes Unicode dashes (en dash, em dash,
+  non-breaking hyphen, …), the minus sign, and invisible format characters
+  such as zero-width spaces and byte order marks, so IDs pasted from rich
+  text validate instead of being rejected.
+- `Id::addCheck()` validates its input up front; the exception message for a
+  character outside the alphabet no longer echoes the offending byte, which
+  could make the message invalid UTF-8.
+
+### Documentation
+
+- Documented the check character's known blind spots: swaps of characters
+  one position apart and some doubled-pair substitutions.
+
 ## [0.2.0] - 2026-08-13
 
 ### Added

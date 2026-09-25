@@ -129,7 +129,9 @@ final class Id
     /**
      * Normalize a transcribed ID back to canonical form: strips separators
      * and whitespace (including Unicode space separators like a pasted
-     * non-breaking space), corrects common misreadings (matched against the
+     * non-breaking space, Unicode dashes and the minus sign that rich-text
+     * editors substitute for `-`, and invisible format characters such as
+     * a zero-width space), corrects common misreadings (matched against the
      * case the input was actually typed in — no assumption is made about
      * which case your application displays IDs in), and lowercases the
      * result.
@@ -146,7 +148,7 @@ final class Id
     {
         // A failed Unicode match retains the original bytes for this step;
         // validation subsequently rejects the invalid bytes or separators.
-        $id = preg_replace('/(*UCP)[\s._-]+/u', '', $input) ?? $input;
+        $id = preg_replace('/(*UCP)[\s\p{Pd}\p{Cf}\x{2212}._-]+/u', '', $input) ?? $input;
         $id = strtr($id, self::CORRECTIONS);
 
         return strtolower($id);
@@ -209,11 +211,14 @@ final class Id
      *
      * The check character catches every single-character substitution and
      * all adjacent transpositions except 3<->z. A uniformly random string of
-     * alphabet characters passes with 1-in-20 odds. Detection only — it adds
-     * no protection against guessing.
+     * alphabet characters passes with 1-in-20 odds. As with any Luhn-style
+     * check, swapping two characters one position apart (abc -> cba) is
+     * never detected, and replacing a doubled pair with another (cc -> dd)
+     * occasionally isn't. Detection only — it adds no protection against
+     * guessing.
      *
      * @throws \InvalidArgumentException if $id is empty, or contains a
-     *     character outside ALPHABET (checksum() has nothing to map it to).
+     *     character outside ALPHABET.
      */
     public static function addCheck(string $id): string
     {
@@ -221,6 +226,12 @@ final class Id
             throw new \InvalidArgumentException(
                 'ID must not be empty — a check character alone is not a checkable ID.',
             );
+        }
+
+        // Validate up front so the message never echoes a stray byte of a
+        // multibyte character, which would make it invalid UTF-8.
+        if (!self::isValid($id)) {
+            throw new \InvalidArgumentException('ID must contain only alphabet characters.');
         }
 
         return $id . self::ALPHABET[self::checksum($id)];

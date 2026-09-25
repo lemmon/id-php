@@ -369,6 +369,13 @@ final class IdTest extends TestCase
             'corrections combined with case and separators' => ['G-Q_V.1.2', 'cqy7z'],
             'non-breaking space separator' => ["tnx44\u{00A0}hdtxk", 'tnx44hdtxk'],
             'narrow no-break space separator' => ["tnx44\u{202F}hdtxk", 'tnx44hdtxk'],
+            'en dash separators' => ["tnx\u{2013}44\u{2013}hd\u{2013}txk", 'tnx44hdtxk'],
+            'em dash separator' => ["tnx44\u{2014}hdtxk", 'tnx44hdtxk'],
+            'non-breaking hyphen separator' => ["tnx44\u{2011}hdtxk", 'tnx44hdtxk'],
+            'minus sign separator' => ["tnx44\u{2212}hdtxk", 'tnx44hdtxk'],
+            'zero-width space' => ["tnx44\u{200B}hdtxk", 'tnx44hdtxk'],
+            'soft hyphen' => ["tnx44\u{00AD}hdtxk", 'tnx44hdtxk'],
+            'leading byte order mark' => ["\u{FEFF}tnx44hdtxk", 'tnx44hdtxk'],
         ];
     }
 
@@ -556,6 +563,25 @@ final class IdTest extends TestCase
         Id::addCheck('xyz!');
     }
 
+    public function testAddCheckRejectsMultibyteCharacterWithValidUtf8Message(): void
+    {
+        // The rejection message must not echo a single byte of a multibyte
+        // character, or it becomes invalid UTF-8 (breaking e.g. JSON logs).
+        try {
+            Id::addCheck("3479\u{00E9}");
+            self::fail('Expected InvalidArgumentException.');
+        } catch (\InvalidArgumentException $e) {
+            self::assertSame(1, preg_match('//u', $e->getMessage()));
+        }
+    }
+
+    public function testAddCheckThrowsOnUppercaseAlphabetCharacters(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        Id::addCheck('3479CDEF');
+    }
+
     public function testAddCheckThrowsOnEmptyId(): void
     {
         // A bare check character with no body (what addCheck('') would
@@ -689,6 +715,19 @@ final class IdTest extends TestCase
         $swapped = 'z3' . $id[-1];
 
         self::assertTrue(Id::verifyCheck($swapped), 'The 3<->z exception should be the one documented gap.');
+    }
+
+    public function testJumpTranspositionIsNeverDetected(): void
+    {
+        // Documented limitation of Luhn-style checks: positions two apart
+        // share a weight, so swapping them never changes the checksum.
+        $id = Id::addCheck('3cd4efh');
+        $swapped = $id;
+        $swapped[0] = $id[2];
+        $swapped[2] = $id[0];
+
+        self::assertNotSame($id, $swapped);
+        self::assertTrue(Id::verifyCheck($swapped));
     }
 
     public function testAdjacentTranspositionDetectedInsideALongerId(): void
